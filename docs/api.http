@@ -1,0 +1,315 @@
+### YT Server API — request collection
+### Works with the VS Code "REST Client" extension or JetBrains' built-in HTTP client.
+### Run requests top to bottom the first time; update the @variables as responses come back.
+
+@baseUrl = http://localhost:4000/api/v1
+@adminAccessToken = paste-admin-access-token-here
+@userAccessToken = paste-user-access-token-here
+@refreshToken = paste-refresh-token-here
+@videoId = paste-video-id-here
+@uploadId = paste-upload-id-here
+@commentId = paste-comment-id-here
+
+
+### Health check
+GET http://localhost:4000/health
+
+
+### =========================================================
+### AUTH
+### =========================================================
+
+### Login as the bootstrap admin (created via `npm run seed:admin`)
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "change-me-please"
+}
+
+
+### Refresh tokens (rotates — old refreshToken becomes invalid)
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+
+### Logout (revokes the given refresh token)
+POST {{baseUrl}}/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+
+### =========================================================
+### ADMIN — create the first regular user (no signup exists)
+### =========================================================
+
+### Create a creator account (admin only)
+POST {{baseUrl}}/admin/users
+Content-Type: application/json
+Authorization: Bearer {{adminAccessToken}}
+
+{
+  "email": "creator@example.com",
+  "password": "CreatorPass123!",
+  "name": "Creator One",
+  "role": "USER"
+}
+
+
+### Login as that new user
+# @name loginUser
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "creator@example.com",
+  "password": "CreatorPass123!"
+}
+
+
+### =========================================================
+### USERS / CHANNEL
+### =========================================================
+
+### My profile
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{userAccessToken}}
+
+
+### Update my channel name / avatar
+PATCH {{baseUrl}}/users/me
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "channelName": "Creator One Official"
+}
+
+
+### Public channel profile of another user
+GET {{baseUrl}}/users/{{videoId}}
+Authorization: Bearer {{userAccessToken}}
+
+
+### =========================================================
+### VIDEOS — publish (after uploading bytes to S3, see UPLOADS below)
+### =========================================================
+
+### Create a video from already-uploaded S3 keys
+# @name createVideo
+POST {{baseUrl}}/videos
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "title": "My First Video",
+  "description": "A test upload",
+  "category": "TECHNOLOGY",
+  "videoKey": "videos/replace-with-real-key.mp4",
+  "thumbnailKey": "thumbnails/replace-with-real-key.jpg"
+}
+
+
+### Edit my video's metadata
+PATCH {{baseUrl}}/videos/{{videoId}}
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "title": "My First Video (edited)"
+}
+
+
+### Delete my video (or any video, if I'm an admin)
+DELETE {{baseUrl}}/videos/{{videoId}}
+Authorization: Bearer {{userAccessToken}}
+
+
+### =========================================================
+### VIDEOS — browse & watch
+### =========================================================
+
+### Home feed, most recent first
+GET {{baseUrl}}/videos?page=1&limit=20&sort=recent
+Authorization: Bearer {{userAccessToken}}
+
+
+### Home feed, most viewed first
+GET {{baseUrl}}/videos?page=1&limit=20&sort=popular
+Authorization: Bearer {{userAccessToken}}
+
+
+### My own uploads
+GET {{baseUrl}}/videos/mine?page=1&limit=20
+Authorization: Bearer {{userAccessToken}}
+
+
+### Video detail (also records a view for the caller)
+GET {{baseUrl}}/videos/{{videoId}}
+Authorization: Bearer {{userAccessToken}}
+
+
+### Recommended videos alongside this one
+GET {{baseUrl}}/videos/{{videoId}}/recommended?limit=10
+Authorization: Bearer {{userAccessToken}}
+
+
+### =========================================================
+### REACTIONS
+### =========================================================
+
+### Like a video
+POST {{baseUrl}}/videos/{{videoId}}/reaction
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "type": "LIKE"
+}
+
+
+### Dislike a video (swaps out any existing reaction)
+POST {{baseUrl}}/videos/{{videoId}}/reaction
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "type": "DISLIKE"
+}
+
+
+### Remove my reaction
+DELETE {{baseUrl}}/videos/{{videoId}}/reaction
+Authorization: Bearer {{userAccessToken}}
+
+
+### =========================================================
+### COMMENTS
+### =========================================================
+
+### List comments on a video
+GET {{baseUrl}}/videos/{{videoId}}/comments?page=1&limit=20
+Authorization: Bearer {{userAccessToken}}
+
+
+### Post a comment
+# @name createComment
+POST {{baseUrl}}/videos/{{videoId}}/comments
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "text": "Great video!"
+}
+
+
+### Delete a comment (author or admin)
+DELETE {{baseUrl}}/comments/{{commentId}}
+Authorization: Bearer {{userAccessToken}}
+
+
+### =========================================================
+### UPLOADS — thumbnail (single presigned PUT)
+### =========================================================
+
+### Get a presigned URL to PUT the thumbnail image directly to S3
+POST {{baseUrl}}/uploads/thumbnails/presign
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "fileName": "thumbnail.jpg",
+  "contentType": "image/jpeg"
+}
+
+### Then, outside this file: PUT the raw image bytes to the returned `url`,
+### with header `Content-Type: image/jpeg`, and keep the returned `key` for
+### the `thumbnailKey` field on POST /videos.
+
+
+### =========================================================
+### UPLOADS — video (resumable multipart)
+### =========================================================
+
+### 1. Initiate — server creates the S3 multipart upload and an UploadSession
+# @name initiateUpload
+POST {{baseUrl}}/uploads/videos/initiate
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "fileName": "my-video.mp4",
+  "fileSize": 52428800,
+  "contentType": "video/mp4"
+}
+
+
+### 2. Presign the parts you need URLs for (request in batches, e.g. 5 at a time)
+POST {{baseUrl}}/uploads/videos/{{uploadId}}/parts/presign
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "partNumbers": [1, 2, 3, 4, 5]
+}
+
+### Then, outside this file: PUT each part's bytes to its presigned `url`.
+### Save the `ETag` response header from each PUT — you need it for `complete` below.
+
+
+### 3. Resume support — ask what's already landed in S3 (after a pause/reload)
+GET {{baseUrl}}/uploads/videos/{{uploadId}}/parts
+Authorization: Bearer {{userAccessToken}}
+
+### Compare against your total part count; presign + upload only the missing parts.
+
+
+### 4. Complete — once every part has been PUT, finalize the object
+POST {{baseUrl}}/uploads/videos/{{uploadId}}/complete
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "parts": [
+    { "partNumber": 1, "eTag": "replace-with-real-etag" },
+    { "partNumber": 2, "eTag": "replace-with-real-etag" }
+  ]
+}
+
+### Response includes `videoKey` — use it as `videoKey` on POST /videos.
+
+
+### Abort instead (cancel the upload, e.g. user navigates away)
+POST {{baseUrl}}/uploads/videos/{{uploadId}}/abort
+Authorization: Bearer {{userAccessToken}}
+
+
+### =========================================================
+### ADMIN — analytics
+### =========================================================
+
+### Per-video stats: total views, unique viewers, likes, dislikes, comments
+GET {{baseUrl}}/admin/videos/{{videoId}}/analytics
+Authorization: Bearer {{adminAccessToken}}
+
+
+### Views-by-day chart data (defaults to last 30 days)
+GET {{baseUrl}}/admin/videos/{{videoId}}/views-by-day
+Authorization: Bearer {{adminAccessToken}}
+
+### With an explicit range:
+# GET {{baseUrl}}/admin/videos/{{videoId}}/views-by-day?from=2026-07-01&to=2026-08-01
+
+
+### Platform-wide dashboard
+GET {{baseUrl}}/admin/dashboard
+Authorization: Bearer {{adminAccessToken}}
