@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import path from 'path';
 import { DataSource } from 'typeorm';
 import { env } from './env';
 import { User } from '../entities/User.entity';
@@ -16,5 +17,9 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   logging: env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   entities: [User, Video, UploadSession, Reaction, Comment, ViewEvent, RefreshToken],
-  migrations: ['src/migrations/*.ts'],
+  // __dirname-relative (not CWD-relative) so this resolves to src/migrations under ts-node
+  // and dist/migrations from the compiled build — a hardcoded 'src/migrations/*.ts' path
+  // still glob-matches in production (src/ ships alongside dist/), loading the raw .ts file
+  // instead of the compiled .js one, which breaks on newer Node's native TS loader.
+  migrations: [path.join(__dirname, '../migrations/*{.ts,.js}')],
 });
