@@ -66,13 +66,20 @@ There's no signup. Once you're logged in as the bootstrap admin, create every ot
 
 ## Exploring the API
 
-[`docs/api.http`](./docs/api.http) is a ready-to-run request collection (VS Code "REST Client"
-extension, or JetBrains' built-in HTTP client) covering the full flow: login → create a video →
-watch it → react/comment → admin analytics → resumable video upload. Set the `@baseUrl` and token
-variables at the top and run requests top to bottom.
+**Interactive docs**: once the server is running, open **http://localhost:4000/docs** — a full
+[Scalar](https://scalar.com) API reference generated from [`docs/openapi.yaml`](./docs/openapi.yaml),
+with every endpoint, request/response schema, and a "Try it" panel that can call the running server
+directly (set a bearer token via the Authorization button once you've logged in). The raw spec is
+also served at `/openapi.json` if you want to import it into Postman/Insomnia/etc.
+
+**Request collection**: [`docs/api.http`](./docs/api.http) is a ready-to-run request collection
+(VS Code "REST Client" extension, or JetBrains' built-in HTTP client) covering the full flow:
+login → create a video → watch it → react/comment → admin analytics → resumable video upload. Set
+the `@baseUrl` and token variables at the top and run requests top to bottom.
 
 Every response follows the same envelope — see `ARCHITECTURE.md` §6 and §9 for the success/error
-shapes and the full error code registry.
+shapes and the full error code registry. If you change a route's validation or response shape,
+update `docs/openapi.yaml` to match — it's hand-maintained, not generated from the Joi schemas.
 
 ## What isn't wired up yet
 

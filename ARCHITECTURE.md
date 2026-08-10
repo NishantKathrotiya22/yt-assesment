@@ -67,6 +67,7 @@ src/
     env.ts                # parsed & validated process.env (fail fast on boot if missing)
     data-source.ts         # TypeORM DataSource (NeonDB connection)
     s3.ts                  # S3 client instance
+    openapi.ts              # loads docs/openapi.yaml once at boot, served at /openapi.json
   entities/
     User.entity.ts
     Video.entity.ts
@@ -244,6 +245,10 @@ Constraints worth calling out explicitly:
   `details` only present for `VALIDATION_ERROR`.
 - **Pagination:** query params `page` (default 1), `limit` (default 20, max 100).
 - Auth: `Authorization: Bearer <accessToken>` header on every protected route.
+- **Live docs:** `GET /docs` serves an interactive [Scalar](https://scalar.com) reference generated
+  from [`docs/openapi.yaml`](../docs/openapi.yaml) (also served raw at `/openapi.json`). The spec is
+  hand-maintained — when a route's validation or response shape changes, update the YAML in the same
+  change.
 
 ## 7. Upload Flow (S3 Presigned, Resumable Multipart)
 
