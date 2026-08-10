@@ -85,13 +85,23 @@ GET {{baseUrl}}/users/me
 Authorization: Bearer {{userAccessToken}}
 
 
-### Update my channel name / avatar
+### Update my channel name (avatar is a separate presign flow, see UPLOADS below)
 PATCH {{baseUrl}}/users/me
 Content-Type: application/json
 Authorization: Bearer {{userAccessToken}}
 
 {
   "channelName": "Creator One Official"
+}
+
+
+### Update my avatar once you have a key from POST /uploads/avatars/presign
+PATCH {{baseUrl}}/users/me
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "avatarKey": "avatars/replace-with-real-key.jpg"
 }
 
 
@@ -218,7 +228,7 @@ Authorization: Bearer {{userAccessToken}}
 
 
 ### =========================================================
-### UPLOADS — thumbnail (single presigned PUT)
+### UPLOADS — thumbnail & avatar (single presigned PUT)
 ### =========================================================
 
 ### Get a presigned URL to PUT the thumbnail image directly to S3
@@ -234,6 +244,20 @@ Authorization: Bearer {{userAccessToken}}
 ### Then, outside this file: PUT the raw image bytes to the returned `url`,
 ### with header `Content-Type: image/jpeg`, and keep the returned `key` for
 ### the `thumbnailKey` field on POST /videos.
+
+
+### Get a presigned URL to PUT a new profile picture directly to S3
+POST {{baseUrl}}/uploads/avatars/presign
+Content-Type: application/json
+Authorization: Bearer {{userAccessToken}}
+
+{
+  "fileName": "avatar.jpg",
+  "contentType": "image/jpeg"
+}
+
+### Same deal: PUT the bytes to the returned `url`, then pass the returned
+### `key` as `avatarKey` to PATCH /users/me (see USERS / CHANNEL above).
 
 
 ### =========================================================

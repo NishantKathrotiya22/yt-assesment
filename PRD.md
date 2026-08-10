@@ -53,7 +53,7 @@ before implementation starts.
 | # | Decision | Rationale |
 |---|----------|-----------|
 | A1 | All endpoints require authentication (no anonymous browsing). | Simplest consistent model; matches "email/password auth" being the only entry point described. Easy to relax later if guest browsing is wanted. |
-| A2 | A `User` account **is** a channel — no separate `Channel` entity. Fields like `channelName`/`avatarUrl` live on `User`. | Request describes "account of poster (Channel)" as one thing, and there's no mention of a user owning multiple channels. |
+| A2 | A `User` account **is** a channel — no separate `Channel` entity. Fields like `channelName`/`avatarKey` live on `User`. | Request describes "account of poster (Channel)" as one thing, and there's no mention of a user owning multiple channels. |
 | A3 | Videos have an optional `category` enum (Music, Gaming, Education, Entertainment, Sports, Technology, News, Other) used only to power recommendations. | "Recommended videos" needs *some* signal beyond pure recency; category is the simplest one that doesn't require ML/search. |
 | A4 | No public signup. First `ADMIN` is created by a one-time seed script from env vars. Additional users (any role) are created via an `ADMIN`-only `POST /admin/users` endpoint with an email + password supplied by the admin. | Resolves the chicken-and-egg problem of "no signup" while still satisfying "create accounts directly from the API with a password." |
 | A5 | Views are deduplicated per user per video within a rolling 24h window (repeated refreshes within a day don't inflate the count). | Keeps "how many users viewed this video" analytics meaningful. Configurable via env if the assignment wants raw event counts instead. |
@@ -73,8 +73,12 @@ before implementation starts.
 
 ### 6.2 Users / Channels
 - `GET /users/me` — my profile.
-- `PATCH /users/me` — update my own `channelName` / `avatarUrl`.
+- `PATCH /users/me` — update my own `channelName` / `avatarKey`. `avatarKey` is an S3 key from the
+  avatar presign flow below, not a raw URL — same convention as a video's `thumbnailKey`.
 - `GET /users/:id` — public channel profile (name, avatar, video count) of any user.
+- `POST /uploads/avatars/presign` — get a presigned URL to `PUT` a new profile picture directly to
+  S3 (single-shot, same shape as the thumbnail presign in 6.5). The returned `key` is what you then
+  send as `avatarKey` to `PATCH /users/me`.
 
 ### 6.3 Videos — Browse & Watch
 - `GET /videos` — paginated home page feed (default: most recent first; also supports sort by
@@ -98,12 +102,14 @@ before implementation starts.
 - `DELETE /videos/:id` — owner or admin: soft delete.
 
 ### 6.5 Uploads (S3 presigned, multipart, resumable)
-The server **never** receives video/thumbnail bytes — it only talks to S3 to generate presigned
-URLs and track upload state. See ARCHITECTURE.md §7 for the full sequence diagram.
+The server **never** receives video/thumbnail/avatar bytes — it only talks to S3 to generate
+presigned URLs and track upload state. See ARCHITECTURE.md §7 for the full sequence diagram.
 
-**Thumbnail (single-shot):**
+**Thumbnail and avatar (single-shot):**
 - `POST /uploads/thumbnails/presign` — body: `fileName`, `contentType`. Returns a single presigned
   `PUT` URL + the S3 key the client must use.
+- `POST /uploads/avatars/presign` — same request/response shape as the thumbnail presign above, just
+  a different S3 prefix. The resulting `key` is passed to `PATCH /users/me` as `avatarKey`.
 
 **Video (resumable multipart):**
 - `POST /uploads/videos/initiate` — body: `fileName`, `fileSize`, `contentType`. Validates size

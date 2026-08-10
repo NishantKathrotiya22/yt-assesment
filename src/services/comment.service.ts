@@ -12,7 +12,7 @@ function toPublicComment(comment: Comment) {
       id: comment.user.id,
       name: comment.user.name,
       channelName: comment.user.channelName,
-      avatarUrl: comment.user.avatarUrl,
+      avatarKey: comment.user.avatarKey,
     },
   };
 }

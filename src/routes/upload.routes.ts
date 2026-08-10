@@ -3,7 +3,7 @@ import { authenticate } from '../middlewares/authenticate';
 import { validate } from '../middlewares/validate';
 import * as uploadController from '../controllers/upload.controller';
 import {
-  presignThumbnailSchema,
+  presignImageSchema,
   initiateVideoUploadSchema,
   uploadSessionIdParamSchema,
   presignPartsSchema,
@@ -14,7 +14,8 @@ const router = Router();
 
 router.use(authenticate);
 
-router.post('/thumbnails/presign', validate(presignThumbnailSchema), uploadController.presignThumbnail);
+router.post('/thumbnails/presign', validate(presignImageSchema), uploadController.presignThumbnail);
+router.post('/avatars/presign', validate(presignImageSchema), uploadController.presignAvatar);
 
 router.post('/videos/initiate', validate(initiateVideoUploadSchema), uploadController.initiateVideoUpload);
 router.post(

@@ -27,7 +27,7 @@ export class User {
   channelName: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
-  avatarUrl: string | null;
+  avatarKey: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

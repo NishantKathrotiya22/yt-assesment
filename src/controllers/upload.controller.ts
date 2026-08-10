@@ -9,6 +9,12 @@ export const presignThumbnail = asyncHandler(async (req: Request, res: Response)
   sendSuccess(res, result);
 });
 
+export const presignAvatar = asyncHandler(async (req: Request, res: Response) => {
+  const { fileName, contentType } = req.body;
+  const result = await uploadService.presignAvatar(fileName, contentType);
+  sendSuccess(res, result);
+});
+
 export const initiateVideoUpload = asyncHandler(async (req: Request, res: Response) => {
   const { fileName, fileSize, contentType } = req.body;
   const result = await uploadService.initiateVideoUpload(req.user!.id, fileName, fileSize, contentType);

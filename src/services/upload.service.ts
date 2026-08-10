@@ -11,6 +11,10 @@ export async function presignThumbnail(fileName: string, contentType: string) {
   return s3.presignPutObject('thumbnails', fileName, contentType);
 }
 
+export async function presignAvatar(fileName: string, contentType: string) {
+  return s3.presignPutObject('avatars', fileName, contentType);
+}
+
 export async function initiateVideoUpload(ownerId: string, fileName: string, fileSize: number, contentType: string) {
   const maxBytes = env.MAX_VIDEO_SIZE_MB * BYTES_PER_MB;
   if (fileSize > maxBytes) throw new ApiError('FILE_TOO_LARGE');

@@ -159,7 +159,7 @@ erDiagram
         string name
         enum role "USER | ADMIN"
         string channelName
-        string avatarUrl "nullable"
+        string avatarKey "S3 key, nullable"
     }
     VIDEO {
         uuid id PK
@@ -252,16 +252,20 @@ Constraints worth calling out explicitly:
 
 ## 7. Upload Flow (S3 Presigned, Resumable Multipart)
 
-### Thumbnail (single PUT)
+### Thumbnail / avatar (single PUT)
+Both are single-shot image uploads with the identical flow — only the S3 key prefix differs
+(`thumbnails/…` vs `avatars/…`, set server-side, not client-controlled).
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant S as Server
     participant S3 as AWS S3
     C->>S: POST /uploads/thumbnails/presign {fileName, contentType}
+    Note over C,S: or POST /uploads/avatars/presign for a profile picture
     S->>S3: getSignedUrl(PutObjectCommand)
     S-->>C: { url, key }
     C->>S3: PUT bytes directly to url
+    Note over C: key becomes thumbnailKey on POST /videos, or avatarKey on PATCH /users/me
 ```
 
 ### Video (resumable multipart)

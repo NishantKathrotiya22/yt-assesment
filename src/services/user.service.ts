@@ -8,7 +8,7 @@ export async function getMe(userId: string) {
   return user;
 }
 
-export async function updateMe(userId: string, data: { channelName?: string; avatarUrl?: string | null }) {
+export async function updateMe(userId: string, data: { channelName?: string; avatarKey?: string | null }) {
   await userRepository.update(userId, data);
   return getMe(userId);
 }
@@ -23,7 +23,7 @@ export async function getPublicProfile(id: string) {
     id: user.id,
     name: user.name,
     channelName: user.channelName,
-    avatarUrl: user.avatarUrl,
+    avatarKey: user.avatarKey,
     videoCount,
     createdAt: user.createdAt,
   };

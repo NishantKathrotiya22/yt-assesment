@@ -16,7 +16,7 @@ export class UserRepository {
   findByEmailWithPassword(email: string) {
     return this.repo.findOne({
       where: { email },
-      select: ['id', 'email', 'passwordHash', 'name', 'role', 'channelName', 'avatarUrl', 'createdAt', 'updatedAt'],
+      select: ['id', 'email', 'passwordHash', 'name', 'role', 'channelName', 'avatarKey', 'createdAt', 'updatedAt'],
     });
   }
 

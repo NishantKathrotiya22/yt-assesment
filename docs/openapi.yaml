@@ -33,7 +33,8 @@ tags:
   - name: Comments
     description: Comment on videos.
   - name: Uploads
-    description: Presigned S3 uploads — thumbnails (single PUT) and videos (resumable multipart).
+    description: >-
+      Presigned S3 uploads — thumbnails and avatars (single PUT) and videos (resumable multipart).
   - name: Admin
     description: Account creation and analytics. Requires the ADMIN role.
 
@@ -151,7 +152,10 @@ paths:
               minProperties: 1
               properties:
                 channelName: { type: string, minLength: 2, maxLength: 100 }
-                avatarUrl: { type: string, format: uri, nullable: true }
+                avatarKey:
+                  type: string
+                  nullable: true
+                  description: S3 key from POST /uploads/avatars/presign — not a raw URL
       responses:
         "200":
           description: Updated profile
@@ -409,6 +413,36 @@ paths:
     post:
       tags: [Uploads]
       summary: Get a presigned URL to PUT a thumbnail image directly to S3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fileName, contentType]
+              properties:
+                fileName: { type: string }
+                contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+      responses:
+        "200":
+          description: Presigned PUT URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: "#/components/schemas/PresignedUrl" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /uploads/avatars/presign:
+    post:
+      tags: [Uploads]
+      summary: Get a presigned URL to PUT a new profile picture directly to S3
+      description: >-
+        Identical shape to the thumbnail presign — only the S3 key prefix differs. The returned
+        `key` is what you send as `avatarKey` to `PATCH /users/me`.
       requestBody:
         required: true
         content:
@@ -835,7 +869,7 @@ components:
         name: { type: string }
         role: { type: string, enum: [USER, ADMIN] }
         channelName: { type: string }
-        avatarUrl: { type: string, nullable: true }
+        avatarKey: { type: string, nullable: true, description: "S3 key, not a URL — see /uploads/avatars/presign" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -852,7 +886,7 @@ components:
         id: { type: string, format: uuid }
         name: { type: string }
         channelName: { type: string }
-        avatarUrl: { type: string, nullable: true }
+        avatarKey: { type: string, nullable: true, description: "S3 key, not a URL — see /uploads/avatars/presign" }
         videoCount: { type: integer }
         createdAt: { type: string, format: date-time }
 
@@ -866,7 +900,7 @@ components:
         id: { type: string, format: uuid }
         name: { type: string }
         channelName: { type: string }
-        avatarUrl: { type: string, nullable: true }
+        avatarKey: { type: string, nullable: true, description: "S3 key, not a URL — see /uploads/avatars/presign" }
 
     Video:
       type: object

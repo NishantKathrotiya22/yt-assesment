@@ -1,6 +1,7 @@
 import Joi from 'joi';
 
-export const presignThumbnailSchema = Joi.object({
+// Shared by thumbnail and avatar presign — both are single-shot image uploads with the same shape.
+export const presignImageSchema = Joi.object({
   fileName: Joi.string().required(),
   contentType: Joi.string().valid('image/jpeg', 'image/png', 'image/webp').required(),
 });

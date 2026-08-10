@@ -23,7 +23,7 @@ function toPublicVideo(video: Video) {
       id: video.owner.id,
       name: video.owner.name,
       channelName: video.owner.channelName,
-      avatarUrl: video.owner.avatarUrl,
+      avatarKey: video.owner.avatarKey,
     },
   };
 }
