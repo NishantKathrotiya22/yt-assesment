@@ -81,6 +81,28 @@ Every response follows the same envelope — see `ARCHITECTURE.md` §6 and §9 f
 shapes and the full error code registry. If you change a route's validation or response shape,
 update `docs/openapi.yaml` to match — it's hand-maintained, not generated from the Joi schemas.
 
+## Deploying to Render
+
+A [`render.yaml`](./render.yaml) blueprint is included. Two things matter for a working deploy:
+
+- **Build Command must run the TypeScript build**, not just install deps — Render's own default
+  is plain `npm install`, which never produces `dist/`. This repo's `postinstall` script
+  (`npm install` → `postinstall` → `npm run build`) makes plain `npm install` sufficient either
+  way, so you can leave Render's Build Command at its default or set it to `npm install` explicitly.
+- **Start Command**: `npm start` (runs `node dist/server.js`).
+
+If you're on an existing service (not created from this blueprint), open its Settings tab and
+confirm those two commands — a service created by hand before `postinstall` existed may still have
+a stale Build/Start Command that skips the build step.
+
+Also set every env var listed in `render.yaml` (Settings → Environment) — the server validates
+`process.env` at boot with Joi and refuses to start if any required var (`DATABASE_URL`,
+`ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, the `AWS_*` ones, `SEED_ADMIN_EMAIL`/`PASSWORD`) is
+missing. Don't set `PORT` yourself — Render injects its own and the app already reads
+`process.env.PORT`. After the first successful deploy, run the migration and seed the admin from
+your local machine against the Render database (`DATABASE_URL` pointed at Render's Postgres):
+`npm run migration:run && npm run seed:admin`.
+
 ## What isn't wired up yet
 
 - The video upload flow (`/uploads/videos/*`) needs real AWS credentials to actually move bytes —
