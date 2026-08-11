@@ -16,7 +16,12 @@ challenge of this assignment, more than any single screen.
 - **Interactive API docs (Scalar):** `https://yt-assesment.onrender.com/docs` — every endpoint,
   request/response shape, and a "Try it" panel you can use directly. This is the source of truth for
   request/response contracts — this document won't repeat what's already there.
-- **Base URL for requests:** `https://yt-assesment.onrender.com/api/v1`
+- **API base URL:** `https://yt-assesment.onrender.com/api/v1`
+- **Asset base URL** (for videos, thumbnails, and profile pictures): `https://test-dev-sena.s3.ap-south-1.amazonaws.com/`
+  — the API gives you a *key*, not a URL (e.g. `thumbnails/167218e9-2136-4182-be9e-fbe13d3d4aec-thumbnailone`).
+  Build the viewable URL exactly like you build an API request URL: base + path, concatenated
+  directly — `https://test-dev-sena.s3.ap-south-1.amazonaws.com/` + `thumbnails/167218e9-2136-4182-be9e-fbe13d3d4aec-thumbnailone`
+  = `https://test-dev-sena.s3.ap-south-1.amazonaws.com/thumbnails/167218e9-2136-4182-be9e-fbe13d3d4aec-thumbnailone`.
 - **Auth:** there's no signup. You'll be given a login (email + password) directly. Every response
   follows a consistent envelope — `{ success, data, meta? }` on success, `{ success: false, error: { code, message, details? } }`
   on failure — so build one shared handler for both, rather than special-casing each call.
@@ -28,7 +33,7 @@ challenge of this assignment, more than any single screen.
 
 | Area | Requirement |
 |---|---|
-| Framework | **Next.js**, App Router (`app/` directory) — not Pages Router |
+| Framework | **React** (Vite recommended for tooling) with **React Router** for client-side routing |
 | Language | **TypeScript** — `any` is not allowed anywhere. If you don't know a type yet, model it properly (`unknown` + narrowing, generics, discriminated unions) rather than reaching for `any` |
 | Server state | **TanStack Query (React Query)** for every API read/write — caching, loading/error states, pagination, invalidation. Don't hand-roll `useEffect` + `useState` data fetching |
 | HTTP client | **Axios** — one configured instance (base URL, auth header injection, refresh-on-401 interceptor), not raw `fetch` scattered around |
@@ -89,10 +94,10 @@ Admin-only screens (user management, analytics dashboards) are **out of scope** 
 
 Videos, thumbnails, and profile pictures are **not** returned as ready-to-use URLs. The API returns
 raw S3 object *keys* — e.g. `videoKey`, `thumbnailKey`, `avatarKey` — because the server never
-serves file bytes itself; S3 does. To actually display one, prefix the key with the asset base URL
-you'll be given separately (it follows the pattern `https://<bucket>.<region>.amazonaws.com/<key>`).
-Put that base URL in an env var (e.g. `NEXT_PUBLIC_ASSET_BASE_URL`) and build a single small helper
-(`resolveAssetUrl(key)`) that every component uses — don't concatenate strings ad hoc in JSX.
+serves file bytes itself; S3 does. To actually display one, concatenate the asset base URL from
+above with the key — that's it, no separators or transforms needed. Put the base URL in an env var
+(e.g. `VITE_ASSET_BASE_URL`) and build a single small helper (`resolveAssetUrl(key)`) that every
+component uses — don't concatenate strings ad hoc in JSX.
 
 ## Uploading files
 
