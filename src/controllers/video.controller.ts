@@ -8,8 +8,13 @@ import * as videoService from '../services/video.service';
 import * as reactionService from '../services/reaction.service';
 
 export const listVideos = asyncHandler(async (req: Request, res: Response) => {
-  const { page, limit, sort } = req.query as unknown as { page: number; limit: number; sort: VideoSort };
-  const { items, total } = await videoService.listVideos(page, limit, sort);
+  const { page, limit, sort, search } = req.query as unknown as {
+    page: number;
+    limit: number;
+    sort: VideoSort;
+    search?: string;
+  };
+  const { items, total } = await videoService.listVideos(page, limit, sort, search);
   sendSuccess(res, items, 200, buildMeta(page, limit, total));
 });
 

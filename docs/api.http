@@ -158,6 +158,11 @@ GET {{baseUrl}}/videos?page=1&limit=20&sort=popular
 Authorization: Bearer {{userAccessToken}}
 
 
+### Search — matches title or description, case-insensitive
+GET {{baseUrl}}/videos?search=first&page=1&limit=20
+Authorization: Bearer {{userAccessToken}}
+
+
 ### My own uploads
 GET {{baseUrl}}/videos/mine?page=1&limit=20
 Authorization: Bearer {{userAccessToken}}

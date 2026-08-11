@@ -42,8 +42,8 @@ async function recordView(videoId: string, userId: string): Promise<void> {
   await videoRepository.incrementViewCount(videoId);
 }
 
-export async function listVideos(page: number, limit: number, sort: VideoSort) {
-  const { items, total } = await videoRepository.list(page, limit, sort);
+export async function listVideos(page: number, limit: number, sort: VideoSort, search?: string) {
+  const { items, total } = await videoRepository.list(page, limit, sort, search);
   return { items: items.map(toPublicVideo), total };
 }
 

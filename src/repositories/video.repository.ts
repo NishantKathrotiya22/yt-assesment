@@ -1,4 +1,4 @@
-import { FindOptionsOrder, In, Not } from 'typeorm';
+import { FindOptionsOrder, FindOptionsWhere, ILike, In, Not } from 'typeorm';
 import { AppDataSource } from '../config/data-source';
 import { Video, VideoCategory } from '../entities/Video.entity';
 
@@ -11,9 +11,14 @@ export class VideoRepository {
     return this.repo.findOne({ where: { id }, relations: { owner: true } });
   }
 
-  async list(page: number, limit: number, sort: VideoSort) {
+  async list(page: number, limit: number, sort: VideoSort, search?: string) {
     const order: FindOptionsOrder<Video> = sort === 'popular' ? { viewCount: 'DESC' } : { createdAt: 'DESC' };
+    // An array of where-clauses is OR'd by TypeORM — matches title OR description.
+    const where: FindOptionsWhere<Video>[] | undefined = search
+      ? [{ title: ILike(`%${search}%`) }, { description: ILike(`%${search}%`) }]
+      : undefined;
     const [items, total] = await this.repo.findAndCount({
+      where,
       relations: { owner: true },
       order,
       skip: (page - 1) * limit,

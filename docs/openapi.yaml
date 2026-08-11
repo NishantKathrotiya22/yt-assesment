@@ -191,13 +191,17 @@ paths:
   /videos:
     get:
       tags: [Videos]
-      summary: Home feed — paginated list of videos
+      summary: Home feed — paginated list of videos, with optional search
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
         - name: sort
           in: query
           schema: { type: string, enum: [recent, popular], default: recent }
+        - name: search
+          in: query
+          description: Case-insensitive partial match against title and description. Omit for the plain home feed.
+          schema: { type: string, minLength: 1, maxLength: 200 }
       responses:
         "200": { $ref: "#/components/responses/VideoList" }
         "401": { $ref: "#/components/responses/Unauthorized" }

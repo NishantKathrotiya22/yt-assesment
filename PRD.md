@@ -82,7 +82,8 @@ before implementation starts.
 
 ### 6.3 Videos — Browse & Watch
 - `GET /videos` — paginated home page feed (default: most recent first; also supports sort by
-  most-viewed).
+  most-viewed). Accepts an optional `search` query param — a case-insensitive partial match against
+  `title` and `description` — so the same endpoint powers both the home feed and a search screen.
 - `GET /videos/:id` — full detail: title, description, channel/poster info, `viewCount`,
   `likeCount`, `dislikeCount`, `commentCount`, and (if authenticated) the caller's own reaction.
   Calling this endpoint also records a view (see 6.6).
