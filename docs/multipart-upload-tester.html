@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>YT Server — Multipart Upload Tester</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161923;
+    --border: #2a2f3d;
+    --text: #e6e8ef;
+    --muted: #8b93a7;
+    --accent: #5b8def;
+    --green: #3ecf8e;
+    --yellow: #e8b339;
+    --red: #f0576b;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 24px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 10px; }
+  .subtitle { color: var(--muted); margin: 0 0 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  section.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  label { display: block; margin-bottom: 10px; }
+  label span.field-label { display: block; color: var(--muted); margin-bottom: 4px; font-size: 12px; }
+  input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea, select {
+    width: 100%;
+    background: #0b0d12;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    padding: 7px 9px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  textarea { resize: vertical; min-height: 44px; }
+  input[type="file"] { color: var(--muted); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  button {
+    background: #1c2130;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #08111f; font-weight: 600; }
+  button.primary:hover:not(:disabled) { color: #08111f; }
+  button.danger:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+  #authStatus, #fileInfo, #stateInfo { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  #authStatus.ok { color: var(--green); }
+  .progress-bar { background: #0b0d12; border: 1px solid var(--border); border-radius: 5px; height: 10px; overflow: hidden; margin: 10px 0; }
+  .progress-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.2s; }
+  .parts-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .part-box {
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 5px; border: 1px solid var(--border);
+    font-size: 11px; color: var(--muted);
+  }
+  .part-box.pending { background: #0b0d12; }
+  .part-box.uploading { background: rgba(91, 141, 239, 0.2); border-color: var(--accent); color: var(--accent); animation: pulse 1s infinite; }
+  .part-box.done { background: rgba(62, 207, 142, 0.15); border-color: var(--green); color: var(--green); }
+  .part-box.failed { background: rgba(240, 87, 107, 0.15); border-color: var(--red); color: var(--red); }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  #logOutput {
+    background: #0b0d12;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    height: 420px;
+    overflow-y: auto;
+  }
+  .log-entry { border-bottom: 1px solid var(--border); padding: 8px 0; }
+  .log-entry:last-child { border-bottom: none; }
+  .log-head { display: flex; gap: 8px; align-items: baseline; margin-bottom: 3px; flex-wrap: wrap; }
+  .log-time { color: var(--muted); font-size: 11px; }
+  .log-tag { font-size: 10px; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .log-tag.req { background: rgba(91, 141, 239, 0.2); color: var(--accent); }
+  .log-tag.res-ok { background: rgba(62, 207, 142, 0.2); color: var(--green); }
+  .log-tag.res-err { background: rgba(240, 87, 107, 0.2); color: var(--red); }
+  .log-tag.info { background: rgba(232, 179, 57, 0.2); color: var(--yellow); }
+  .log-method { color: var(--text); font-weight: 600; }
+  .log-url { color: var(--muted); word-break: break-all; }
+  .log-body { margin: 4px 0 0; white-space: pre-wrap; word-break: break-all; color: #b8c0d4; font-size: 11.5px; max-height: 160px; overflow-y: auto; }
+  small.hint { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>YT Server — Multipart Upload Tester</h1>
+<p class="subtitle">Drives the real resumable multipart upload flow against a running instance of the API. Open your browser's Network tab alongside the log below to see everything.</p>
+
+<section class="panel">
+  <h2>0. API Base URL</h2>
+  <input type="text" id="baseUrl" value="http://localhost:4000/api/v1" />
+  <small class="hint">Point this at your deployed API (e.g. https://yt-assesment.onrender.com/api/v1) to test production instead.</small>
+</section>
+
+<div class="grid">
+  <div>
+    <section class="panel">
+      <h2>1. Log In</h2>
+      <label><span class="field-label">Email</span><input type="email" id="email" value="admin@example.com" /></label>
+      <label><span class="field-label">Password</span><input type="password" id="password" placeholder="password" /></label>
+      <div class="row"><button class="primary" id="loginBtn">Log In</button></div>
+      <div id="authStatus">Not logged in</div>
+    </section>
+
+    <section class="panel">
+      <h2>2. Video Details</h2>
+      <label><span class="field-label">Title</span><input type="text" id="title" value="Multipart Upload Test" /></label>
+      <label><span class="field-label">Description</span><textarea id="description">Uploaded via the multipart upload tester.</textarea></label>
+      <label><span class="field-label">Category</span>
+        <select id="category">
+          <option>OTHER</option><option>MUSIC</option><option>GAMING</option><option>EDUCATION</option>
+          <option>ENTERTAINMENT</option><option>SPORTS</option><option>TECHNOLOGY</option><option>NEWS</option>
+        </select>
+      </label>
+      <label><span class="field-label">Thumbnail key (optional — leave as-is to reuse a placeholder)</span>
+        <input type="text" id="thumbnailKey" value="thumbnails/placeholder.jpg" />
+      </label>
+    </section>
+
+    <section class="panel">
+      <h2>3. Select File</h2>
+      <input type="file" id="fileInput" accept="video/*" />
+      <div id="fileInfo">No file selected.</div>
+    </section>
+
+    <section class="panel">
+      <h2>4. Upload Controls</h2>
+      <div class="row">
+        <button class="primary" id="initiateBtn" disabled>Initiate</button>
+        <button id="startBtn" disabled>Start / Resume</button>
+        <button id="pauseBtn" disabled>Pause</button>
+        <button class="danger" id="abortBtn" disabled>Abort</button>
+      </div>
+      <div class="row">
+        <button id="completeBtn" disabled>Complete Upload</button>
+        <button class="primary" id="publishBtn" disabled>Publish Video (POST /videos)</button>
+      </div>
+      <div id="stateInfo">Select a file, then click Initiate.</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="parts-grid" id="partsGrid"></div>
+    </section>
+  </div>
+
+  <div>
+    <section class="panel">
+      <h2>API Call Log</h2>
+      <div id="logOutput"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  let accessToken = null;
+  let upload = null; // { uploadId, key, partSize, totalParts, file, parts: Map<partNumber, eTag>, videoKey }
+  let paused = true;
+  let running = false;
+  let currentAbortController = null;
+
+  const $ = (id) => document.getElementById(id);
+  const logOutput = $('logOutput');
+
+  function nowStamp() {
+    return new Date().toLocaleTimeString('en-GB', { hour12: false }) + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
+  }
+
+  function fmtBody(body) {
+    if (body === undefined || body === null) return '';
+    if (typeof body === 'string') return body;
+    try { return JSON.stringify(body, null, 2); } catch { return String(body); }
+  }
+
+  function logEntry(tag, tagClass, method, url, body) {
+    const el = document.createElement('div');
+    el.className = 'log-entry';
+    const bodyHtml = body !== undefined && body !== null && body !== ''
+      ? `<pre class="log-body">${fmtBody(body).replace(/</g, '&lt;')}</pre>` : '';
+    el.innerHTML = `
+      <div class="log-head">
+        <span class="log-time">${nowStamp()}</span>
+        <span class="log-tag ${tagClass}">${tag}</span>
+        ${method ? `<span class="log-method">${method}</span>` : ''}
+        ${url ? `<span class="log-url">${url}</span>` : ''}
+      </div>
+      ${bodyHtml}`;
+    logOutput.appendChild(el);
+    logOutput.scrollTop = logOutput.scrollHeight;
+  }
+
+  function logInfo(msg) { logEntry('info', 'info', '', '', msg); }
+
+  async function apiCall(method, path, body) {
+    const base = $('baseUrl').value.replace(/\/$/, '');
+    const url = base + path;
+    const headers = { 'Content-Type': 'application/json' };
+    if (accessToken) headers['Authorization'] = 'Bearer ' + accessToken;
+
+    logEntry('request', 'req', method, path, body);
+
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    let json = null;
+    try { json = await res.json(); } catch { /* no body */ }
+
+    logEntry(res.ok ? 'response ' + res.status : 'error ' + res.status, res.ok ? 'res-ok' : 'res-err', method, path, json);
+
+    if (!res.ok) {
+      const msg = json?.error?.message || ('HTTP ' + res.status);
+      throw new Error(msg);
+    }
+    return json.data;
+  }
+
+  function setStateInfo(text) { $('stateInfo').textContent = text; }
+
+  function renderParts() {
+    const grid = $('partsGrid');
+    grid.innerHTML = '';
+    if (!upload) { $('progressFill').style.width = '0%'; return; }
+    for (let p = 1; p <= upload.totalParts; p++) {
+      const box = document.createElement('div');
+      const status = upload.parts.has(p) ? 'done' : (upload.uploadingPart === p ? 'uploading' : 'pending');
+      box.className = 'part-box ' + status;
+      box.textContent = p;
+      box.title = `Part ${p}` + (upload.parts.has(p) ? `\nETag: ${upload.parts.get(p)}` : '');
+      grid.appendChild(box);
+    }
+    const pct = Math.round((upload.parts.size / upload.totalParts) * 100);
+    $('progressFill').style.width = pct + '%';
+  }
+
+  function updateButtons() {
+    $('initiateBtn').disabled = !$('fileInput').files[0] || !accessToken || running;
+    $('startBtn').disabled = !upload || running || (upload && upload.parts.size === upload.totalParts);
+    $('pauseBtn').disabled = !running;
+    $('abortBtn').disabled = !upload || (upload && upload.completed);
+    $('completeBtn').disabled = !upload || running || upload.parts.size !== upload.totalParts || upload.completed;
+    $('publishBtn').disabled = !upload || !upload.videoKey;
+  }
+
+  // ---- Auth ----
+  $('loginBtn').onclick = async () => {
+    try {
+      const data = await apiCall('POST', '/auth/login', { email: $('email').value, password: $('password').value });
+      accessToken = data.accessToken;
+      const status = $('authStatus');
+      status.textContent = `Logged in as ${data.user.email} (${data.user.role})`;
+      status.className = 'ok';
+      updateButtons();
+    } catch (e) {
+      $('authStatus').textContent = 'Login failed: ' + e.message;
+      $('authStatus').className = '';
+    }
+  };
+
+  // ---- File selection ----
+  $('fileInput').onchange = () => {
+    const f = $('fileInput').files[0];
+    upload = null;
+    $('fileInfo').textContent = f ? `${f.name} — ${(f.size / (1024 * 1024)).toFixed(2)} MB — ${f.type || 'unknown type'}` : 'No file selected.';
+    setStateInfo('Ready to initiate.');
+    renderParts();
+    updateButtons();
+  };
+
+  // ---- Initiate ----
+  $('initiateBtn').onclick = async () => {
+    const file = $('fileInput').files[0];
+    if (!file) return;
+    try {
+      const data = await apiCall('POST', '/uploads/videos/initiate', {
+        fileName: file.name,
+        fileSize: file.size,
+        contentType: file.type || 'video/mp4',
+      });
+      upload = { ...data, file, parts: new Map(), uploadingPart: null, completed: false, videoKey: null };
+      paused = true;
+      setStateInfo(`uploadId=${data.uploadId} | key=${data.key} | ${data.totalParts} parts of ${(data.partSize / (1024 * 1024)).toFixed(1)}MB`);
+      renderParts();
+      updateButtons();
+    } catch (e) {
+      logInfo('Initiate failed: ' + e.message);
+    }
+  };
+
+  // ---- Upload a single part ----
+  async function uploadPart(partNumber) {
+    const { key, uploadId, partSize, file } = upload;
+    const start = (partNumber - 1) * partSize;
+    const end = Math.min(start + partSize, file.size);
+    const blob = file.slice(start, end);
+
+    const presigned = await apiCall('POST', `/uploads/videos/${uploadId}/parts/presign`, { partNumbers: [partNumber] });
+    const url = presigned[0].url;
+
+    upload.uploadingPart = partNumber;
+    renderParts();
+
+    currentAbortController = new AbortController();
+    logEntry('S3 PUT →', 'req', 'PUT', `part ${partNumber} (${(blob.size / 1024).toFixed(0)} KB) to S3`, null);
+
+    let res;
+    try {
+      res = await fetch(url, { method: 'PUT', body: blob, signal: currentAbortController.signal });
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        logEntry('paused mid-transfer', 'info', 'PUT', `part ${partNumber}`, null);
+      }
+      throw e;
+    } finally {
+      upload.uploadingPart = null;
+    }
+
+    const etag = res.headers.get('etag');
+    logEntry('S3 PUT ' + res.status, res.ok ? 'res-ok' : 'res-err', 'PUT', `part ${partNumber}`, { etag });
+    if (!res.ok || !etag) throw new Error(`S3 PUT for part ${partNumber} failed (status ${res.status})`);
+
+    upload.parts.set(partNumber, etag);
+    renderParts();
+  }
+
+  // ---- Start / Resume ----
+  $('startBtn').onclick = async () => {
+    if (!upload || running) return;
+    running = true;
+    paused = false;
+    updateButtons();
+
+    try {
+      // Resume behavior: ask the server what S3 already has before continuing.
+      const serverParts = await apiCall('GET', `/uploads/videos/${upload.uploadId}/parts`);
+      serverParts.forEach((p) => upload.parts.set(p.partNumber, p.eTag));
+      renderParts();
+
+      for (let p = 1; p <= upload.totalParts; p++) {
+        if (paused) { logInfo(`Paused before part ${p}.`); break; }
+        if (upload.parts.has(p)) continue;
+        try {
+          await uploadPart(p);
+        } catch (e) {
+          if (e.name === 'AbortError') break;
+          logInfo('Part ' + p + ' failed: ' + e.message);
+          break;
+        }
+      }
+      if (!paused && upload.parts.size === upload.totalParts) {
+        logInfo('All parts uploaded. Click "Complete Upload" to finalize.');
+        setStateInfo(`All ${upload.totalParts} parts uploaded — ready to complete.`);
+      }
+    } finally {
+      running = false;
+      updateButtons();
+    }
+  };
+
+  // ---- Pause ----
+  $('pauseBtn').onclick = () => {
+    paused = true;
+    if (currentAbortController) currentAbortController.abort();
+    setStateInfo(`Paused at ${upload.parts.size}/${upload.totalParts} parts. Click Start/Resume to continue.`);
+  };
+
+  // ---- Abort ----
+  $('abortBtn').onclick = async () => {
+    if (!upload) return;
+    paused = true;
+    if (currentAbortController) currentAbortController.abort();
+    try {
+      await apiCall('POST', `/uploads/videos/${upload.uploadId}/abort`);
+      logInfo('Upload aborted — S3 has discarded any uploaded parts.');
+    } catch (e) {
+      logInfo('Abort failed: ' + e.message);
+    }
+    upload = null;
+    running = false;
+    setStateInfo('Aborted. Select a file to start over.');
+    renderParts();
+    updateButtons();
+  };
+
+  // ---- Complete ----
+  $('completeBtn').onclick = async () => {
+    if (!upload) return;
+    const parts = [...upload.parts.entries()].map(([partNumber, eTag]) => ({ partNumber, eTag }));
+    try {
+      const data = await apiCall('POST', `/uploads/videos/${upload.uploadId}/complete`, { parts });
+      upload.videoKey = data.videoKey;
+      upload.completed = true;
+      setStateInfo(`Completed. videoKey=${data.videoKey}`);
+      logInfo('Upload finalized on S3. Ready to publish as a video.');
+    } catch (e) {
+      logInfo('Complete failed: ' + e.message);
+    }
+    updateButtons();
+  };
+
+  // ---- Publish ----
+  $('publishBtn').onclick = async () => {
+    if (!upload || !upload.videoKey) return;
+    try {
+      const data = await apiCall('POST', '/videos', {
+        title: $('title').value,
+        description: $('description').value,
+        category: $('category').value,
+        videoKey: upload.videoKey,
+        thumbnailKey: $('thumbnailKey').value,
+      });
+      logInfo(`Published! video id=${data.id}`);
+    } catch (e) {
+      logInfo('Publish failed: ' + e.message);
+    }
+  };
+
+  updateButtons();
+})();
+</script>
+</body>
+</html>
