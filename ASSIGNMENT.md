@@ -74,17 +74,6 @@ of the screen — that stays mounted **above** your route content while the user
 else in the app (Home, Search, Channel, etc.). Clicking the mini-player expands it back to the full
 Watch page.
 
-The engineering implication: the `<video>` element and its playback state cannot live inside a
-page/route component, because Next.js will unmount it on navigation and playback will stop. It
-needs to live in a layout that persists across routes (e.g. the root layout), with Redux holding
-*which* video is active, its play/pause state, and whether it's currently docked as a mini-player
-or expanded to the full watch view. Route components read that state and render themselves
-accordingly — they don't own the player.
-
-As a stretch addition on top of this (not a replacement for it), you can also wire up the browser's
-native Picture-in-Picture API (`video.requestPictureInPicture()`) so the video can float outside the
-browser window entirely. But the in-app mini-player described above is the required behavior.
-
 ### 6. Channel (my profile)
 View your own channel: name, profile picture, and your uploaded videos. An **edit** flow to update
 your channel name and profile picture (see the profile-picture upload flow below).
@@ -159,27 +148,11 @@ A couple of things worth building deliberately rather than as an afterthought:
 
 This is graded as much on how the codebase is built as on what it does.
 
-**Project structure** — organize by feature, not by file type. Something like:
-```
-app/                     # routes (App Router)
-  (auth)/login/
-  (main)/
-    page.tsx             # home
-    search/
-    watch/[id]/
-    channel/
-    upload/
-components/              # shared, reusable UI
-features/                # feature-scoped logic: api hooks, slices, types, feature-local components
-  video/
-  auth/
-  player/                # the persistent mini-player lives here
-  channel/
-store/                    # redux store setup
-lib/                       # axios instance, resolveAssetUrl, other cross-cutting utilities
-```
-Treat this as a starting point, not a mandate — but "everything in one giant `components/` folder"
-or logic embedded directly in page files is not acceptable at this scope.
+**Project structure** — maintain a clean, well-organized structure. The specific layout is your
+call — pick whatever organization you think works best and stay consistent with it. "Everything in
+one giant `components/` folder" or logic embedded directly in page files is not acceptable at this
+scope, but beyond that, how you organize routes, shared UI, and feature logic is a decision we want
+you to make and be able to explain.
 
 **Git** — work in feature branches (`feature/watch-page`, `feature/upload-flow`, ...), not directly
 on `main`. Commit frequently and in logical, reviewable chunks — not one commit per day dumping
@@ -200,5 +173,5 @@ it's doing too much.
 - [ ] Thumbnail and profile picture uploads work end to end (presign → PUT → key used)
 - [ ] Video upload works end to end, including pausing mid-upload and resuming it successfully
 - [ ] No `any` in the codebase; forms are Yup-validated with visible error states
-- [ ] Reasonable feature-based project structure; a real git history with meaningful commits across
+- [ ] Clean, well-organized project structure; a real git history with meaningful commits across
       multiple branches, not a single initial commit
